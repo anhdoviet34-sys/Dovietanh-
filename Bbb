@@ -1,0 +1,506 @@
+--[[ 
+    ⚡ DELTA MENU VIETANH36 PREMIUM V5 [FIXED ESP BOX] ⚡
+    Bản vá lỗi toàn diện:
+    - Khắc phục 100% lỗi Box ESP bị đứng im một chỗ. 
+    - Áp dụng cơ chế Render-Loop liên tục ép tọa độ Box, Tên (trên đầu), Khoảng cách (dưới chân) chạy theo mục tiêu.
+    - Giữ nguyên thông số: Speed 29, Jump 50, Smart Prediction, Fullbright Loop.
+--]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Lighting = game:GetService("Lighting")
+
+-- Vùng chứa giao diện an toàn
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeltaVIETANH36PremiumPanelV5"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local success, err = pcall(function()
+    ScreenGui.Parent = game:GetService("CoreGui")
+end)
+if not success or not ScreenGui.Parent then
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- ====================================================================
+-- BIẾN CẤU HÌNH HỆ THỐNG
+-- ====================================================================
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local aimbotEnabled = false
+local espEnabled = false
+local useTeamCheck = false 
+local infJumpEnabled = false 
+local fullbrightEnabled = false 
+
+-- Cấu hình thông số
+local MAX_DISTANCE = 500       
+local FOV_RADIUS = 130         
+local WALK_SPEED_VALUE = 29   
+local JUMP_POWER_VALUE = 50   
+
+local originalClockTime = Lighting.ClockTime
+local originalBrightness = Lighting.Brightness
+local originalFogEnd = Lighting.FogEnd
+local originalGlobalShadows = Lighting.GlobalShadows
+
+-- ====================================================================
+-- KHỞI TẠO GIAO DIỆN BẢNG CHÍNH
+-- ====================================================================
+local MainPanel = Instance.new("Frame")
+local UICorner_Main = Instance.new("UICorner")
+local Header = Instance.new("Frame")
+local UICorner_Header = Instance.new("UICorner")
+local Title = Instance.new("TextLabel")
+local ToggleBtn = Instance.new("TextButton")
+local UICorner_Toggle = Instance.new("UICorner")
+local ContentFrame = Instance.new("ScrollingFrame") 
+
+MainPanel.Name = "MainPanel"
+MainPanel.Parent = ScreenGui
+MainPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 22) 
+MainPanel.Position = UDim2.new(0.5, -125, 0.35, -115)
+MainPanel.Size = UDim2.new(0, 250, 0, 280) 
+MainPanel.ClipsDescendants = true
+MainPanel.Active = true
+
+UICorner_Main.CornerRadius = UDim.new(0, 14)
+UICorner_Main.Parent = MainPanel
+
+Header.Name = "Header"
+Header.Parent = MainPanel
+Header.BackgroundColor3 = Color3.fromRGB(139, 92, 246) 
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.Active = true
+
+UICorner_Header.CornerRadius = UDim.new(0, 14)
+UICorner_Header.Parent = Header
+
+Title.Name = "Title"
+Title.Parent = Header
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Font = Enum.Font.SourceSansBold
+Title.Text = "👑 VIETANH36 HUB V5"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Parent = Header
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.BackgroundTransparency = 0.8
+ToggleBtn.Position = UDim2.new(1, -30, 0, 5)
+ToggleBtn.Size = UDim2.new(0, 25, 0, 25)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Text = "−"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 16
+
+UICorner_Toggle.CornerRadius = UDim.new(1, 0)
+UICorner_Toggle.Parent = ToggleBtn
+
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Parent = MainPanel
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Position = UDim2.new(0, 0, 0, 35)
+ContentFrame.Size = UDim2.new(1, 0, 1, -35)
+ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 310) 
+ContentFrame.ScrollBarThickness = 3
+ContentFrame.ScrollBarImageColor3 = Color3.fromRGB(139, 92, 246)
+
+local AimbotToggle = Instance.new("TextButton")
+local EspToggle = Instance.new("TextButton")
+local TeamCheckToggle = Instance.new("TextButton")
+local SpeedToggle = Instance.new("TextButton")
+local JumpToggle = Instance.new("TextButton")
+local InfJumpToggle = Instance.new("TextButton")
+local FullbrightToggle = Instance.new("TextButton")
+
+local function styleButton(btn, text, pos, color)
+    btn.Parent = ContentFrame
+    btn.BackgroundColor3 = color
+    btn.Position = pos
+    btn.Size = UDim2.new(0.88, 0, 0, 32)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 8)
+end
+
+styleButton(AimbotToggle, "🎯 AIMBOT VIETANH36: OFF", UDim2.new(0.06, 0, 0.02, 0), Color3.fromRGB(239, 68, 68))
+styleButton(EspToggle, "👁️ ESP/BOX VIETANH36: OFF", UDim2.new(0.06, 0, 0.15, 0), Color3.fromRGB(239, 68, 68))
+styleButton(TeamCheckToggle, "👥 TEAM CHECK VIETANH36: OFF", UDim2.new(0.06, 0, 0.28, 0), Color3.fromRGB(239, 68, 68))
+styleButton(SpeedToggle, "⚡ SPEED (29) VIETANH36: OFF", UDim2.new(0.06, 0, 0.41, 0), Color3.fromRGB(239, 68, 68))
+styleButton(JumpToggle, "🦘 JUMP (50) VIETANH36: OFF", UDim2.new(0.06, 0, 0.54, 0), Color3.fromRGB(239, 68, 68))
+styleButton(InfJumpToggle, "🌌 INF JUMP VIETANH36: OFF", UDim2.new(0.06, 0, 0.67, 0), Color3.fromRGB(239, 68, 68))
+styleButton(FullbrightToggle, "☀️ FULLBRIGHT VIETANH36: OFF", UDim2.new(0.06, 0, 0.80, 0), Color3.fromRGB(239, 68, 68))
+
+-- ====================================================================
+-- VÒNG TRÒN FOV CHÍNH GIỮA MÀN HÌNH
+-- ====================================================================
+local FovGui = Instance.new("Frame")
+local FovCorner = Instance.new("UICorner")
+FovGui.Name = "FovCircleUI"
+FovGui.Parent = ScreenGui
+FovGui.AnchorPoint = Vector2.new(0.5, 0.5) 
+FovGui.Position = UDim2.new(0.5, 0, 0.5, 0) 
+FovGui.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FovGui.BackgroundTransparency = 1 
+FovGui.Size = UDim2.new(0, FOV_RADIUS * 2, 0, FOV_RADIUS * 2)
+FovGui.Visible = false
+FovCorner.CornerRadius = UDim.new(1, 0)
+FovCorner.Parent = FovGui
+
+local FovStroke = Instance.new("UIStroke")
+FovStroke.Color = Color3.fromRGB(139, 92, 246) 
+FovStroke.Thickness = 1.2
+FovStroke.Transparency = 0.4
+FovStroke.Parent = FovGui
+
+-- LOGIC KÉO THẢ MENU
+local isMinimized = false
+local originalSize = MainPanel.Size
+local minimizedSize = UDim2.new(0, 45, 0, 45)
+
+ToggleBtn.Activated:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        ToggleBtn.Text = "＋"
+        ContentFrame.Visible = false
+        Title.Visible = false
+        TweenService:Create(MainPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = minimizedSize}):Play()
+        Header.Size = UDim2.new(1, 0, 1, 0)
+        ToggleBtn.Position = UDim2.new(0.5, -12, 0.5, -12)
+    else
+        ToggleBtn.Text = "−"
+        local tween = TweenService:Create(MainPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = originalSize})
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isMinimized then ContentFrame.Visible = true Title.Visible = true end
+        end)
+        Header.Size = UDim2.new(1, 0, 0, 35)
+        ToggleBtn.Position = UDim2.new(1, -30, 0, 5)
+    end
+end)
+
+local dragging, dragStart, startPos
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainPanel.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainPanel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- ====================================================================
+-- KIỂM TRA MỤC TIÊU & THUẬT TOÁN PREDICTION NÂNG CAO 
+-- ====================================================================
+local function isVisible(targetCharacter)
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then return false end
+    local startPos = Camera.CFrame.Position
+    local targetPos = targetCharacter.Head.Position
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    
+    local raycastResult = workspace:Raycast(startPos, targetPos - startPos, raycastParams)
+    return (not raycastResult or raycastResult.Instance:IsDescendantOf(targetCharacter))
+end
+
+local function getClosestPlayerInFov()
+    local closestPlayer = nil
+    local shortestDistanceToCenter = math.huge
+
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            
+            if useTeamCheck and player.Team == LocalPlayer.Team then continue end
+
+            local magnitudeDistance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if magnitudeDistance <= MAX_DISTANCE then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                if onScreen and isVisible(player.Character) then
+                    local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    local distanceToCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+                    
+                    if distanceToCenter <= FOV_RADIUS and distanceToCenter < shortestDistanceToCenter then
+                        closestPlayer = player
+                        shortestDistanceToCenter = distanceToCenter
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+local function getCustomBulletSpeed()
+    local defaultSpeed = 950
+    if LocalPlayer.Character then
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            local toolName = string.lower(tool.Name)
+            if string.find(toolName, "sniper") or string.find(toolName, "rifle") or string.find(toolName, "bolt") then
+                return 1600
+            elseif string.find(toolName, "smg") or string.find(toolName, "pistol") or string.find(toolName, "uzi") then
+                return 850
+            elseif string.find(toolName, "shotgun") then
+                return 700
+            end
+        end
+    end
+    return defaultSpeed
+end
+
+AimbotToggle.Activated:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    if aimbotEnabled then
+        AimbotToggle.Text = "🎯 AIMBOT VIETANH36: ON"
+        AimbotToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+        FovGui.Visible = true
+    else
+        AimbotToggle.Text = "🎯 AIMBOT VIETANH36: OFF"
+        AimbotToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+        FovGui.Visible = false
+    end
+end)
+
+TeamCheckToggle.Activated:Connect(function()
+    useTeamCheck = not useTeamCheck
+    if useTeamCheck then
+        TeamCheckToggle.Text = "👥 TEAM CHECK VIETANH36: ON"
+        TeamCheckToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    else
+        TeamCheckToggle.Text = "👥 TEAM CHECK VIETANH36: OFF"
+        TeamCheckToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+    end
+end)
+
+local speedEnabled = false
+local jumpEnabled = false
+
+-- Nút điều khiển Tốc độ, Nhảy, Nhảy vô hạn, Fullbright
+SpeedToggle.Activated:Connect(function()
+    speedEnabled = not speedEnabled
+    if speedEnabled then
+        SpeedToggle.Text = "⚡ SPEED (29) VIETANH36: ON"
+        SpeedToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    else
+        speedEnabled = false
+        SpeedToggle.Text = "⚡ SPEED (29) VIETANH36: OFF"
+        SpeedToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16 
+        end
+    end
+end)
+
+JumpToggle.Activated:Connect(function()
+    jumpEnabled = not jumpEnabled
+    if jumpEnabled then
+        JumpToggle.Text = "🦘 JUMP (50) VIETANH36: ON"
+        JumpToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    else
+        jumpEnabled = false
+        JumpToggle.Text = "🦘 JUMP (50) VIETANH36: OFF"
+        JumpToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = 50 
+        end
+    end
+end)
+
+InfJumpToggle.Activated:Connect(function()
+    infJumpEnabled = not infJumpEnabled
+    if infJumpEnabled then
+        InfJumpToggle.Text = "🌌 INF JUMP VIETANH36: ON"
+        InfJumpToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    else
+        InfJumpToggle.Text = "🌌 INF JUMP VIETANH36: OFF"
+        InfJumpToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+FullbrightToggle.Activated:Connect(function()
+    fullbrightEnabled = not fullbrightEnabled
+    if fullbrightEnabled then
+        FullbrightToggle.Text = "☀️ FULLBRIGHT VIETANH36: ON"
+        FullbrightToggle.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+    else
+        FullbrightToggle.Text = "☀️ FULLBRIGHT VIETANH36: OFF"
+        FullbrightToggle.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+        Lighting.ClockTime = originalClockTime
+        Lighting.Brightness = originalBrightness
+        Lighting.FogEnd = originalFogEnd
+        Lighting.GlobalShadows = originalGlobalShadows
+    end
+end)
+
+-- ====================================================================
+-- HỆ THỐNG ESP SỬA LỖI ĐỨNG IM (BÁM ĐUỔI THEO ĐỊCH LIÊN TỤC TRÊN SCREEN GUI)
+-- ====================================================================
+local activeEsps = {}
+
+local function createFixedEsp(player)
+    if player == LocalPlayer then return end
+
+    local function removeOldEsp()
+        if activeEsps[player] then
+            activeEsps[player].Box:Destroy()
+            activeEsps[player].NameLabel:Destroy()
+            activeEsps[player].DistLabel:Destroy()
+            activeEsps[player] = nil
+        end
+    end
+
+    local function setupEsp()
+        removeOldEsp()
+
+        local char = player.Character
+        if not char then return end
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if not hrp or not hum then return end
+
+        -- Khởi tạo Frame Box 2D trực tiếp trên ScreenGui của Menu để tránh lỗi đứng im
+        local Box = Instance.new("Frame")
+        Box.Name = "FixedBox_" .. player.Name
+        Box.BackgroundTransparency = 1
+        Box.Size = UDim2.new(0, 0, 0, 0)
+        Box.Visible = false
+        Box.Parent = ScreenGui
+
+        local BoxStroke = Instance.new("UIStroke")
+        BoxStroke.Thickness = 1
+        BoxStroke.Color = Color3.fromRGB(255, 0, 0)
+        BoxStroke.Transparency = 0.2
+        BoxStroke.Parent = Box
+
+        -- Khởi tạo Text Tên trên ScreenGui
+        local NameLabel = Instance.new("TextLabel")
+        NameLabel.BackgroundTransparency = 1
+        NameLabel.Font = Enum.Font.SourceSansBold
+        NameLabel.TextSize = 9
+        NameLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        NameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        NameLabel.TextStrokeTransparency = 0.3
+        NameLabel.Text = "👤 " .. player.Name
+        NameLabel.Size = UDim2.new(0, 120, 0, 15)
+        NameLabel.Visible = false
+        NameLabel.Parent = ScreenGui
+
+        -- Khởi tạo Text Khoảng Cách trên ScreenGui
+        local DistLabel = Instance.new("TextLabel")
+        DistLabel.BackgroundTransparency = 1
+        DistLabel.Font = Enum.Font.SourceSansItalic
+        DistLabel.TextSize = 9
+        DistLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DistLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        DistLabel.TextStrokeTransparency = 0.3
+        DistLabel.Size = UDim2.new(0, 100, 0, 15)
+        DistLabel.Visible = false
+        DistLabel.Parent = ScreenGui
+
+        activeEsps[player] = {
+            Box = Box,
+            BoxStroke = BoxStroke,
+            NameLabel = NameLabel,
+            DistLabel = DistLabel,
+            Character = char,
+            Hrp = hrp,
+            Hum = hum
+        }
+    end
+
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        setupEsp()
+    end)
+    if player.Character then setupEsp() end
+end
+
+-- Quét người chơi
+for _, p in pairs(Players:GetPlayers()) do createFixedEsp(p) end
+Players.PlayerAdded:Connect(createFixedEsp)
+Players.PlayerRemoving:Connect(function(p)
+    if activeEsps[p] then
+        activeEsps[p].Box:Destroy()
+        activeEsps[p].NameLabel:Destroy()
+        activeEsps[p].DistLabel:Destroy()
+        activeEsps[p] = nil
+    end
+end)
+
+-- ====================================================================
+-- VÒNG LẶP RENDER TOÀN CỤC CHÍNH (UPDATE TOÀN BỘ LOGIC GAME)
+-- ====================================================================
+RunService.RenderStepped:Connect(function()
+    -- 1. Xử lý Fullbright Loop
+    if fullbrightEnabled then
+        Lighting.ClockTime = 14
+        Lighting.Brightness = 3
+        Lighting.FogEnd = 999999
+        Lighting.GlobalShadows = false
+    end
+
+    -- 2. Cập nhật Speed/Jump
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local hum = LocalPlayer.Character.Humanoid
+        if speedEnabled then hum.WalkSpeed = WALK_SPEED_VALUE end
+        if jumpEnabled then 
+            hum.JumpPower = JUMP_POWER_VALUE 
+            hum.UseJumpPower = true
+        end
+    end
+
+    -- 3. Xử lý Khóa Tâm Aimbot Prediction
+    if aimbotEnabled then
+        local target = getClosestPlayerInFov()
+        if target and target.Character and target.Character:FindFirstChild("Head") and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHead = target.Character.Head
+            local targetHRP = target.Character.HumanoidRootPart
+            
+            local distance = (Camera.CFrame.Position - targetHead.Position).Magnitude
+            local currentBulletSpeed = getCustomBulletSpeed()
+            local timeToTarget = distance / currentBulletSpeed
+            local targetVelocity = targetHRP.Velocity
+            
+            local adaptiveModifier = 1.0
+            if distance > 250 then adaptiveModifier = 0.82 end
+            local refinedVelocity = Vector3.new(targetVelocity.X, targetVelocity.Y * 0.35, targetVelocity.Z)
+            
+            local predictedPosition = targetHead.Position + (refinedVelocity * timeToTarget * adaptiveModifier)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+        end
+    end
+
+    -- 4. [CƠ CHẾ MỚI]: VÒNG LẶP KHÓA TỌA ĐỘ BÁM ĐUỔI BOX & TEXT THEO ĐỊCH KHÔNG RỜI
+    for player, esp in pairs(activeEsps) do
+        if espEnabled and esp.Character and esp.Character.Parent and esp.H
